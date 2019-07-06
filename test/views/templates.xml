@@ -1,0 +1,687 @@
+<odoo>
+    <data>
+        <!-- <template id="listing"> -->
+        <!--   <ul> -->
+        <!--     <li t-foreach="objects" t-as="object"> -->
+        <!--       <a t-attf-href="#{ root }/objects/#{ object.id }"> -->
+        <!--         <t t-esc="object.display_name"/> -->
+        <!--       </a> -->
+        <!--     </li> -->
+        <!--   </ul> -->
+        <!-- </template> -->
+        <template id="layout_custom" name="Main layout">
+            <t t-call="web.layout">
+        <t t-set="html_data" t-value="{
+            'lang': lang and lang.replace('_', '-'),
+            'data-website-id': website.id if website else None,
+            'data-editable': '1' if editable else None,
+            'data-translatable': '1' if translatable else None,
+            'data-edit_translations': '1' if edit_translations else None,
+            'data-view-xmlid': xmlid if editable or translatable else None,
+            'data-main-object': repr(main_object) if editable or translatable else None,
+            'data-oe-company-name': res_company.name
+        }"/>
+        <t t-if="not title">
+            <t t-if="not additional_title and main_object and 'name' in main_object">
+                <t t-set="additional_title" t-value="main_object.name"/>
+            </t>
+            <t t-if="main_object and 'website_meta_title' in main_object and main_object.website_meta_title">
+                <t t-set="title" t-value="main_object.website_meta_title"/>
+            </t>
+            <t t-else="">
+                <t t-set="title"><t t-if="additional_title"><t t-raw="additional_title"/> | </t><t t-esc="(website or res_company).name"/></t>
+            </t>
+        </t>
+        <t t-set="x_icon" t-value="'/web/image/website/%s/favicon/' % website.id"/>
+        <t t-set="head_website">
+            <meta name="generator" content="Odoo"/>
+
+            <t t-set="meta_description" t-value="main_object and 'website_meta_description' in main_object
+                and main_object.website_meta_description or website_meta_description"/>
+            <t t-set="meta_keywords" t-value="main_object and 'website_meta_keywords' in main_object
+                and main_object.website_meta_keywords or website_meta_keywords"/>
+            <meta t-if="meta_description or editable" name="description" t-att-content="meta_description"/>
+            <meta t-if="meta_keywords or editable" name="keywords" t-att-content="meta_keywords"/>
+
+            <!-- OpenGraph tags for Facebook sharing -->
+            <meta property="og:title" t-att-content="additional_title" />
+            <meta property="og:site_name" t-att-content="res_company.name" />
+            <t t-if="main_object and 'plain_content' in main_object and main_object.plain_content">
+                <t t-set="og_description" t-value="main_object.plain_content[0:500]"/>
+                <meta property="og:description" t-att-content="og_description" />
+                <meta property='og:image' t-att-content="request.httprequest.url_root+'logo.png'"/>
+                <meta property='og:url' t-att-content="request.httprequest.url_root+request.httprequest.path[1:end]"/>
+            </t>
+
+            <t t-set="languages" t-value="website.get_languages() if website else None"/>
+            <t t-if="request and request.website_multilang and website">
+                <t t-foreach="website.get_alternate_languages(request.httprequest)" t-as="lg">
+                    <link rel="alternate" t-att-hreflang="lg['hreflang']" t-att-href="lg['href']"/>
+                </t>
+            </t>
+
+            <script type="text/javascript">
+                odoo.session_info = {
+                    is_superuser: <t t-esc="json.dumps(request.env.user._is_superuser())"/>,
+                    is_frontend: true,
+                };
+            </script>
+
+            <t t-call-assets="web.assets_common" t-js="false"/>
+            <t t-call-assets="web.assets_frontend" t-js="false"/>
+            <t t-call-assets="web_editor.summernote" t-js="false" groups="website.group_website_publisher"/>
+            <t t-call-assets="web_editor.assets_editor" t-js="false" groups="website.group_website_publisher"/>
+            <t t-call-assets="website.assets_editor" t-js="false" groups="website.group_website_publisher"/>
+
+            <t t-call-assets="web.assets_common" t-css="false"/>
+            <t t-call-assets="web.assets_frontend" t-css="false"/>
+            <t t-call-assets="web_editor.summernote" t-css="false" groups="website.group_website_publisher"/>
+            <t t-call-assets="web_editor.assets_editor" t-css="false" groups="website.group_website_publisher"/>
+            <t t-call-assets="website.assets_editor" t-css="false" groups="website.group_website_publisher"/>
+        </t>
+        <t t-set="head" t-value="head_website + (head or '')"/>
+
+        <div id="wrapwrap" t-att-class="pageName or ''">
+           <!--  <header>
+                <div class="navbar navbar-default navbar-static-top">
+                    <div class="container">
+                        <div class="navbar-header">
+                            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-top-collapse">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            <a class="navbar-brand" href="/" t-if="website" t-field="website.name">My Website</a>
+                        </div>
+                        <div class="collapse navbar-collapse navbar-top-collapse">
+                            <ul class="nav navbar-nav navbar-right" id="top_menu">
+                                <t t-foreach="website.menu_id.child_id" t-as="submenu">
+                                    <t t-call="website.submenu"/>
+                                </t>
+                                <li class="divider" t-ignore="true" t-if="website.user_id != user_id"/>
+                                <li class="dropdown" t-ignore="true" t-if="website.user_id != user_id">
+                                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                                        <b>
+                                            <span t-esc="(len(user_id.name)&gt;25) and (user_id.name[:23]+'...') or user_id.name"/>
+                                            <span class="caret"></span>
+                                        </b>
+                                    </a>
+                                    <ul class="dropdown-menu js_usermenu" role="menu">
+                                        <li id="o_logout"><a t-attf-href="/web/session/logout?redirect=/" role="menuitem">Logout</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header> -->
+            <main>
+                <t t-raw="0"/>
+            </main>
+          <!--   <footer>
+                <div id="footer">
+                </div>
+            </footer> -->
+        </div>
+        <script id='tracking_code' t-if="website and website.google_analytics_key and not editable">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+            })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+            ga('create', _.str.trim('<t t-esc="website.google_analytics_key"/>'), 'auto');
+            ga('send','pageview');
+        </script>
+            </t>
+        </template>
+
+
+
+       <template id="index" name="Jobs">
+            <t t-call="test.layout_custom">
+        <div id="wrap">
+            <div class="oe_structure">
+                <section class="mb16">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12 text-center mb16">
+                                <h2>Our Job Offers</h2>
+                                <h3 class="text-muted">Join us and help disrupt the enterprise market!</h3>
+                            </div>
+                            <div class="col-md-12">
+                                <p>
+                                    Join us, we offer you an extraordinary chance to learn, to
+                                    develop and to be part of an exciting experience and
+                                    team.
+                                </p>
+                                                   </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="container oe_website_jobs">
+                <div class="row">
+                    <div class="hidden" id="jobs_grid_left">
+
+                    </div>
+                    <div class="col-md-12" id="jobs_grid">
+                        <div t-if="not jobs">
+                            <div class="text-center text-muted">
+                               <!--  <h3 class="css_editable_hidden"><a t-attf-href="/page/website.contactus">Contact us</a> for job opportunities.</h3> -->
+                                <h4 groups="hr_recruitment.group_hr_recruitment_manager">
+                                    Create new job pages from the <strong><i>+New</i></strong> top-right button.
+                                </h4>
+                            </div>
+                        </div>
+                        <ul class="media-list" t-if="jobs">
+                            <li t-foreach="jobs" t-as="job" class="media">
+                                <div class="media-body" t-att-data-publish="job.website_published and 'on' or 'off'">
+                                    <h3 class="media-heading">
+                                        <a t-attf-href="/works/detail/#{ slug(job) }">
+                                            <span t-field="job.name"/>
+                                        </a>
+                                        <small t-if="job.no_of_recruitment &gt; 1">
+                                            <t t-esc="job.no_of_recruitment"/> open positions
+                                        </small>
+                                    </h3>
+
+                                    <span t-field="job.address_id" t-options='{
+                                        "widget": "contact",
+                                        "fields": ["address"],
+                                        "no_tag_br": True
+                                        }'/>
+                                    <span t-if="not job.website_published" class="label label-danger">unpublished</span>
+                                    <div class="text-muted">
+                                        <i class="fa fa-clock-o"/> <span t-field="job.write_date"/>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+            </t>
+        </template>
+
+<template id="apply">
+    <t t-call="test.layout_custom">
+        <t t-set="additional_title">Apply Job</t>
+
+        <div id="wrap"  class="container">
+            <h1 class="text-center">
+                Job Application Form
+            </h1>
+            <h2 t-if="job" class="text-center text-muted">
+                <span t-field="job.name"/>
+            </h2>
+
+            <!-- start -->
+
+            <div class="stepwizard col-md-offset-3">
+                <div class="stepwizard-row setup-panel">
+                  <div class="stepwizard-step">
+                    <a href="#step-1" type="button" class="btn btn-primary btn-circle">1</a>
+                    <p>Etape 1</p>
+                  </div>
+                  <div class="stepwizard-step">
+                    <a href="#step-2" type="button" class="btn btn-default btn-circle" disabled="disabled">2</a>
+                    <p>Etape 2</p>
+                  </div>
+                  <div class="stepwizard-step">
+                    <a href="#step-3" type="button" class="btn btn-default btn-circle" disabled="disabled">3</a>
+                    <p>Etape 3</p>
+                  </div>
+                  <div class="stepwizard-step">
+                    <a href="#step-4" type="button" class="btn btn-default btn-circle" disabled="disabled">4</a>
+                    <p>Etape 4</p>
+                  </div>
+                </div>
+            </div>
+            <!-- end -->
+
+            <div class="row">
+                <section id="forms">
+                    <form action="/website_form/" method="post" class="s_website_form form-horizontal container-fluid mt32" enctype="multipart/form-data" data-model_name="hr.applicant"  t-att-data-form_field_department_id="job and job.department_id.id or False" t-att-data-form_field_job_id="job and job.id or False">
+                        <!-- step one -->
+                        <div class="row setup-content" id="step-1">
+                            <div class="form-group ">
+                                <div class="col-md-7 col-sm-8">
+                                    <input type="hidden" class="form-control o_website_form_input read" name="other_source" value="formulaire" required="false"/>
+                                </div>
+                            </div>
+                            <div class="form-group form-field o_website_form_required_custom internal">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="internal">Type de candidature</label>
+                                </div>
+                                <div class="col-md-3 col-sm-3">
+                                    <select required="required" id="apply_type" class="form-control o_website_form_input read" name="internal">
+                                        <option value=""></option>
+                                        <option value="internal">Je travaille déjà chez Eufonie</option>
+                                        <option value="external">Je ne travaille pas chez Eufonie</option>
+                                    </select>
+                                </div>
+                                <div style="display:none;" class="col-md-2 col-sm-2 text-right matricule">
+                                    <label class="control-label" for="salary_expected">Numéro matricule</label>
+                                </div>
+                                <div style="display:none;" class="col-md-2 col-sm-2 matricule">
+                                    <input type="text" class="form-control o_website_form_input matricule_input" name="matricule" required=""/>
+                                </div>
+                            </div>
+                            <div class="form-group form-field  o_website_form_required_custom">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="civility">Civilité</label>
+                                </div>
+                                <div class="col-md-7 col-sm-8">
+                                    <select required="" class="form-control o_website_form_input read" name="civility">
+                                        <option value=""></option>
+                                        <option value="Madame">Madame</option>
+                                        <option value="Monsieur">Monsieur</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group form-field  o_website_form_required_custom">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="partner_name">Nom</label>
+                                </div>
+                                <div class="col-md-7 col-sm-8">
+                                    <input type="text" class="form-control o_website_form_input read" name="partner_name" required="required"/>
+                                </div>
+                            </div>
+                            <div class="form-group  o_website_form_required_custom">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="civility">Prénom</label>
+                                </div>
+                                <div class="col-md-7 col-sm-8">
+                                    <input type="text" class="form-control o_website_form_input read" name="first_name"  required="required"/>
+                                </div>
+                            </div>
+
+                            <div class="form-group  form-field  o_website_form_required_custom">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="partner_phone">Numéro de téléphone 1</label>
+                                </div>
+                                <div class="col-md-7 col-sm-8">
+                                    <input type="text" class="form-control bfh-phone o_website_form_input read" name="partner_phone" required="required"/>
+
+                                </div>
+                            </div>
+
+                            <div class="form-group ">
+                                <div class="col-md-3 col-sm-4 text-right">
+                                    <label class="control-label" for="applicant_phone_two">Numéro de téléphone 2</label>
+                                </div>
+                                <div class="col-md-7 col-sm-8">
+                                    <input type="text" class="form-control o_website_form_input read" name="applicant_phone_two" required="false"/>
+                                </div>
+                            </div>
+                          <div class="form-group">
+                              <div class="col-md-offset-3 col-sm-offset-4 col-sm-8 col-md-7">
+                                  <button class="btn btn-primary nextBtn btn-lg pull-right " type="button">Suivant</button>
+                              </div>
+                          </div>
+                      </div>
+                      <!-- end step one -->
+
+                      <!-- start second -->
+                      <div class="row setup-content" id="step-2">
+                          <div class="form-group ">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="address">Adresse</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="text" class="form-control o_website_form_input read" name="address" required=""/>
+                              </div>
+                          </div>
+
+                          <div class="form-group ">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="city">Ville</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="text" class="form-control o_website_form_input read" name="city" required=""/>
+                              </div>
+                          </div>
+
+                          <div class="form-group ">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="postal_code">Code Postal</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="text" class="form-control o_website_form_input read" name="postal_code" required=""/>
+                              </div>
+                          </div>
+
+                          <div class="form-group ">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="district">Quartier</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                    <input type="text" class="form-control o_website_form_input read" name="district" required=""/>
+                              </div>
+                          </div>
+
+                          <div class="form-group form-field  o_website_form_required_custom">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="email_from">Your Email *</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="email" class="form-control o_website_form_input read" name="email_from" required="required"/>
+                              </div>
+                          </div>
+
+                          <br /><br /><br />
+
+                          <div class="form-group form-field  o_website_form_custom">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="date_of_birth">Date de naissance *</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="text" class="form-control o_website_form_input read form_datetime" name="date_of_birth" style="z-index:1" required="required"/>
+                              </div>
+                          </div>
+
+                          <div class="form-group form-field  o_website_form_custom">
+                              <div class="col-md-3 col-sm-4 text-right">
+                                  <label class="control-label" for="place_of_brith">Lieu de naissance *</label>
+                              </div>
+                              <div class="col-md-7 col-sm-8">
+                                  <input type="text" class="form-control o_website_form_input read" name="place_of_brith" required="required"/>
+                              </div>
+                          </div>
+                          <div class="form-group ">
+                              <div class="col-md-offset-3 col-sm-offset-4 col-sm-8 col-md-7">
+                                <button class="btn btn-primary prevBtn btn-lg pull-left" type="button" style="z-index:-1">Précedent</button>
+                                <button class="btn btn-primary nextBtn btn-lg pull-right" type="button">Suivant</button>
+                              </div>
+                          </div>
+                      </div>
+                      <!-- end -->
+
+                      <!-- start third -->
+                      <div class="row setup-content" id="step-3">
+                        <div class="form-group ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="father_name">Nom du père</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="father_name" required=""/>
+                            </div>
+                        </div>
+
+                        <div class="form-group ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="father_firstname">Prénom du père</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="father_firstname" required=""/>
+                            </div>
+                        </div>
+                        <div class="form-group ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="mother_name">Nom de la mère</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="mother_name" required=""/>
+                            </div>
+                        </div>
+                        <div class="form-group ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="mother_firstname">Prénom de la mère</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="mother_firstname" required=""/>
+                            </div>
+                        </div>
+
+                        <br /><br /><br />
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="cin_number">Numéro de CIN *</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="cin_mada form-control o_website_form_input read" name="cin_number" required="required"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="delivery_date_cin">Délivré le *</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" id="cin_delevery_date" class="form-control o_website_form_input read form_datetime_delivrance" name="delivery_date_cin" required="required" style="z-index:1"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="delivery_place_cin">Lieu de délivrance *</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="delivery_place_cin" required="required"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group ">
+                            <div class="col-md-offset-3 col-sm-offset-4 col-sm-8 col-md-7">
+                              <button class="btn btn-primary prevBtn btn-lg pull-left" type="button" style="z-index:-1">Précedent</button>
+                              <button class="btn btn-primary nextBtn btn-lg pull-right" type="button">Suivant</button>
+                            </div>
+                        </div>
+                      </div>
+                      <!-- end -->
+
+                      <!-- start -->
+                      <div class="row setup-content" id="step-4">
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="salary_expected">Quelles sont vos prétentions salariales (en Ariary) * ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <input type="text" class="form-control o_website_form_input read" name="salary_expected" required="required"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-field  o_website_form_required_custom">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="disponibility_week">Quelle est votre disponibilté du Lundi au Vendredi ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                              <select class="form-control o_website_form_input read" name="disponibility_week" required="required">
+                                  <option value=""></option>
+                                  <t t-foreach="website.get_disponibility_week()" t-as="d_week">
+                                    <option t-att-value="d_week['id']"><t t-esc="d_week['name']" /></option>
+                                  </t>
+                              </select>
+                            </div>
+                        </div>
+
+
+                        <div class="form-group form-field  o_website_form_required_custom">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="disponibility_saturday">Quelle est votre disponibilté les Samedis ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                              <select class="form-control o_website_form_input read" name="disponibility_saturday" required="required">
+                                  <option value=""></option>
+                                  <t t-foreach="website.get_disponibility_saturday()" t-as="d_saturday">
+                                    <option t-att-value="d_saturday['id']"><t t-esc="d_saturday['name']" /></option>
+                                  </t>
+                              </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-field  o_website_form_required_custom">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="disponibility_sunday">Quelle est votre disponibilté les Dimanches ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                              <select class="form-control o_website_form_input read" name="disponibility_sunday" required="required">
+                                  <option value=""></option>
+                                  <t t-foreach="website.get_disponibility_sunday()" t-as="d_sunday">
+                                    <option t-att-value="d_sunday['id']"><t t-esc="d_sunday['name']" /></option>
+                                  </t>
+                              </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="availability">A partir de quand pouvez-vous commencer à travailler * ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                              <!-- <input type="text" id="availability_date" class="form-control o_website_form_input read form_datetime" name="availability" required="required"/> -->
+                                <input type="text" id="availability_date" class="form-control o_website_form_input read" name="availability" required="required"/>
+                            </div>
+                        </div>
+                        <br /><br /><br />
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="bool_project">Avez vous un projet personnel en cours ou à venir ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <label class="radio-inline"> <input type="checkbox" id="project_a_venir" class="o_website_form_input" name="bool_project"  /> </label>
+                            </div>
+                        </div>
+                        <div class="form-group form-field  project_expected" style="display:none">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="project">Précisez de quel projet s'agit-il</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <textarea class="form-control o_website_form_input read" name="project"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group form-field  o_website_form_custom">
+                          <div class="col-md-3 col-sm-4 text-right">
+                            <label class="control-label" for="ResumeCV">Insertion du CV *</label>
+                          </div>
+                          <div class="col-md-7 col-sm-8">
+                            <input type="file" class="form-control o_website_form_input read" name="ResumeCV" required="required"/>
+                          </div>
+                        </div>
+
+                        <div class="form-group form-field  o_website_form_custom">
+                          <div class="col-md-3 col-sm-4 text-right">
+                            <label class="control-label" for="ResumeLM">Insertion de la Lettre de Motivation *</label>
+                          </div>
+                          <div class="col-md-7 col-sm-8">
+                            <input type="file" class="form-control o_website_form_input read" name="ResumeLM" required="required"/>
+                          </div>
+                        </div>
+
+                        <div class="form-group form-field ">
+                            <div class="col-md-3 col-sm-4 text-right">
+                                <label class="control-label" for="other_description">Avez vous quelque chose à ajouter ?</label>
+                            </div>
+                            <div class="col-md-7 col-sm-8">
+                                <textarea class="form-control o_website_form_input read" name="other_description"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-md-offset-3 col-sm-offset-4 col-sm-8 col-md-7">
+                                <span class="btn btn-primary btn-lg o_website_form_send">Enregistrer</span>
+                                <span id="o_website_form_result"></span>
+                            </div>
+                        </div>
+                      </div>
+                      <!-- end start -->
+
+                    </form>
+                </section>
+            </div>
+        </div>
+        <script type="text/javascript">
+          $(function() {
+            $('.matricule_input').mask('000', {placeholder: "___", clearIfNotMatch: true});
+            $('.bfh-phone').mask('000 00 000 00', {placeholder: "039 99 999 99", clearIfNotMatch: true});
+            $('.phone_fr').mask('00 00 00 00 00', {placeholder: "06 99 99 99 99", clearIfNotMatch: true});
+            $('.cin_mada').mask('000 000 000 000', {placeholder: "999 999 999 999", clearIfNotMatch: true});
+            $('.money_example').mask('# ##0', {reverse: true});
+          });
+        </script>
+    </t>
+</template>
+  
+
+
+
+<template id="detail" name="Job Detail">
+    <t t-call="test.layout_custom">
+        <t t-set="additional_title">Détail du Poste</t>
+        <div id="wrap" class="js_hr_recruitment">
+            <div class="oe_structure"/>
+
+            <!-- Breadcrumb -->
+            <section class="mb16 bg-white">
+                <div class="container">
+                    <div class="pull-right">
+                        <a t-attf-href="/works/apply/#{job.id}" class="diyfeLinkAsButton pull-right mt32 mb4">Postuler maintenant !</a>
+                        <br/>
+                        <t t-call="website.publish_management">
+                            <t t-set="object" t-value="job"/>
+                            <t t-set="publish_edit" t-value="True"/>
+                        </t>
+                    </div>
+                    <label class="mb0 mt16"><a href="/works">Postes</a></label> /
+                    <h1 class="mb0 mt0" t-field="job.name"/>
+                    <h4 class="mt0" t-field="job.address_id" t-field-options='{
+                        "widget": "contact",
+                        "fields": ["city"],
+                        "no_tag_br": True
+                    }'/>
+                </div>
+            </section>
+
+            <!-- Mission -->
+            <t t-if="job.job_mission">
+              <section class="mb16">
+                <div class="container">
+                  <div class="col-md-12 mt0 mb0">
+                    <h3 class="o_default_snippet_text"><b>Votre mission principale</b></h3>
+                    <h4 class="mt0 mb0 o_default_snippet_text" t-field="job.job_mission"/>
+                  </div>
+                </div>
+              </section>
+            </t>
+
+            <!-- Responsibilities -->
+            <section class="o_tasks">
+              <div class="container">
+                <t t-if="job.job_responsabilities">
+                  <div class="col-md-12 mt0 mb0">
+                    <h3 class="o_default_snippet_text"><b>Vos responsabilités</b></h3>
+                    <h4 class="mt0 mb0 o_default_snippet_text" t-field="job.job_responsabilities"/>
+                  </div>
+                </t>
+                <t t-if="job.job_profil">
+                  <div class="col-md-12 mt0 mb0">
+                    <h3 class="o_default_snippet_text"><b>Votre profil</b></h3>
+                    <h4 class="mt0 mb0 o_default_snippet_text" t-field="job.job_profil"/>
+                  </div>
+                </t>
+              </div>
+            </section>
+
+            <!-- What's great -->
+            <t t-if="job.job_benefit">
+              <section class="mb32 mt16">
+                <div class="container">
+                  <div class="col-md-12 mt0 mb0">
+                    <h3 class="o_default_snippet_text"><b>Vos avantages</b></h3>
+                    <h4 class="mt0 mb0 o_default_snippet_text" t-field="job.job_benefit"/>
+                  </div>
+                </div>
+              </section>
+            </t>
+
+        </div>
+    </t>
+</template>
+
+    </data>
+</odoo>
